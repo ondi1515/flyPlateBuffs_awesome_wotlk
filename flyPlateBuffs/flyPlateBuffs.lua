@@ -355,36 +355,55 @@ end
 
 local total = 0
 local function iconOnUpdate(self, elapsed)
-	total = total + elapsed
-	if total > 0 then
-		total = 0
-		if self.expiration and self.expiration > 0 then
-			local timeLeft = self.expiration - GetTime()
-			if timeLeft < 0 then
-				-- local frame = self:GetParent():GetParent()
-				-- self:Hide()
-				-- UpdateUnitAuras(frame.namePlateUnitToken)
-				return
-			end
-			if db.showDuration then
-				self.durationtext:SetFormattedText(FormatTime(timeLeft))
-				if db.colorTransition then
-					self.durationtext:SetTextColor(GetColorByTime(timeLeft,self.duration))
-				end
-				if db.durationPosition == 1 or db.durationPosition == 3 then
-					self.durationBg:SetWidth(self.durationtext:GetStringWidth())
-					self.durationBg:SetHeight(self.durationtext:GetStringHeight())
-				end
-			end
-			if (timeLeft / (self.duration + 0.01) ) < db.blinkTimeleft and timeLeft < 60 then --buff only has 20% timeleft and is less then 60 seconds.
-				local f = GetTime() % 1
-				if f > 0.5 then
-					f = 1 - f
-				end
-				self:SetAlpha(math.min(math.max(f * 3, 0), 1))
-			end
-		end
-	end
+    total = total + elapsed
+    if total > 0 then
+        total = 0
+        if self.expiration and self.expiration > 0 then
+            local timeLeft = self.expiration - GetTime()
+            if timeLeft < 0 then
+                return
+            end
+            if db.showDuration then
+                self.durationtext:SetFormattedText(FormatTime(math.floor(timeLeft)))
+                if db.colorTransition then
+                    self.durationtext:SetTextColor(GetColorByTime(timeLeft,self.duration))
+                end
+                if db.durationPosition == 1 or db.durationPosition == 3 then
+                    self.durationBg:SetWidth(self.durationtext:GetStringWidth())
+                    self.durationBg:SetHeight(self.durationtext:GetStringHeight())
+                end
+            end
+
+            if (timeLeft / (self.duration + 0.01) ) < db.blinkTimeleft and timeLeft < 60 then
+                local f = GetTime() % 1
+                if f > 0.5 then
+                    f = 1 - f
+                end
+                self:SetAlpha(math.min(math.max(f * 2, 0), 1))
+            end
+
+            -- EFFET SABLIER EN TEMPS RÉEL
+            if self.sandOverlay then
+                local duration = self.duration or 0
+                local expiration = self.expiration or 0
+                if duration > 0 and expiration > 0 then
+                    local percent = 1 - math.max(0, math.min(timeLeft / duration, 1))
+                    local height = self:GetHeight() * percent
+                    -- print("DEBUG sandOverlay:", "duration", duration, "expiration", expiration, "timeLeft", timeLeft, "percent", percent, "height", height)
+                    if percent > 0 then
+                        self.sandOverlay:SetHeight(height)
+                        self.sandOverlay:Show()
+                    else
+                        self.sandOverlay:SetHeight(0)
+                        self.sandOverlay:Hide()
+                    end
+                else
+                    self.sandOverlay:SetHeight(0)
+                    self.sandOverlay:Hide()
+                end
+            end
+        end
+    end
 end
 local function GetTexCoordFromSize(frame,size,size2)
 	local arg = size/size2
@@ -457,6 +476,7 @@ local function UpdateBuffIcon(self)
 		end
 		self.stacktext:Show()
 	end
+
 end
 local function UpdateBuffIconOptions(self)
 	self.texture:SetAllPoints(self)
@@ -522,8 +542,13 @@ local function iconOnHide(self)
 	self.durationtext:Hide()
 	self.durationBg:Hide()
 	self.stackBg:Hide()
+	if self.sandOverlay then
+    	self.sandOverlay:Hide()
+	end
+
 end
 local function CreateBuffIcon(frame,i)
+	
 	frame.fPBiconsFrame.iconsFrame[i] = CreateFrame("Button")
 	frame.fPBiconsFrame.iconsFrame[i]:SetParent(frame.fPBiconsFrame)
 	local buffIcon = frame.fPBiconsFrame.iconsFrame[i]
@@ -545,6 +570,14 @@ local function CreateBuffIcon(frame,i)
 
 	buffIcon.stackBg = buffIcon:CreateTexture(nil,"BORDER")
 	buffIcon.stackBg:SetVertexColor(0,0,0,.75)
+
+	buffIcon.sandOverlay = buffIcon:CreateTexture(nil, "ARTWORK", nil, 2)
+	buffIcon.sandOverlay:SetTexture("Interface\\Buttons\\WHITE8x8") -- Texture blanche, tu peux la colorer
+	buffIcon.sandOverlay:SetColorTexture(0, 0, 0, 0.75) -- noir semi-transparent, modifie à ton goût
+	buffIcon.sandOverlay:SetPoint("TOPLEFT", buffIcon, "TOPLEFT")
+	buffIcon.sandOverlay:SetPoint("TOPRIGHT", buffIcon, "TOPRIGHT")
+	buffIcon.sandOverlay:SetHeight(0)
+	buffIcon.sandOverlay:Hide()
 
 	UpdateBuffIconOptions(buffIcon)
 
